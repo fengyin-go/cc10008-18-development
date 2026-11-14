@@ -59,16 +59,38 @@ npm run build
 | 通知分发 | `notify` | 通知规则 | 规则编号、触发条件、通知渠道 |
 | 查询缓存 | `cache` | 缓存策略 | 策略编号、目标查询、缓存键规则 |
 | 数据标签 | `tag` | 标签定义 | 标签编号、标签名称、计算表达式 |
-| 数据分享 | `share` | 分享链接 | 链接编号、目标数据集、访问密码 |
+| 数据分享 | `share` | 分享链接 | 链接编号、目标数据集、访问密码、有效期天数、最大浏览次数 |
+
+## 数据分享的快照与访问规则
+
+分享链接生成时会冻结一份不可变快照（水印、目标数据集、报告模板与图表清单、生成时间、校验和），
+之后报告模板改名、数据集调整、分享配置变更都不会回写旧链接。实现集中在
+`frontend/src/api/share-service.ts`，页面只调用它：
+
+- **打开链接**：`/share/open/:token?channel=邮件`，快照内容只有访问成功后才展示。
+- **重复生成**：同一分享配置已有有效链接时直接复用（同一快照、同一计数、同一有效期）。
+- **失败原因分开返回**：`BAD_PASSWORD`（密码错误）、`REVOKED`（已撤销）、`EXPIRED`（过期）、
+  `VIEW_LIMIT_REACHED`（次数耗尽）、`DOWNLOAD_DISABLED`（下载关闭）、`SNAPSHOT_INVALID`（快照缺失或校验失败）。
+- **访问批次**：每次访问（含失败）都记录时间、来源渠道、动作、结果与是否计次；
+  只有成功访问 `counted=true` 才消耗浏览次数，首次访问时间单独记录。
+- **并发**：计数与生成都是同步读改写事务，最后一个可用次数只会有一个请求拿到，其余留下失败批次。
+- **水印为空**：可以登记配置，但生成链接会被拒绝。
+- **有效期 / 次数 / 下载开关的变更**只影响之后的行为：旧链接的 `expiresAt`、`maxViews` 在生成时固定；
+  下载开关按分享配置的当前值判断，关闭后页面预览仍可打开，文件请求返回 `DOWNLOAD_DISABLED`。
+- **清理与诊断**：管理页的「清理残留与重复记录」会去重令牌/有效链接、合并访问批次、移除孤儿链接、
+  停用坏快照并按需执行过期自动清理；「自检与诊断」只读，不消耗次数。
+
+重置数据分享模块会同时清掉链接、访问批次与历史归档（`resetModule('share')`）。
 
 ## 约定
 
 - 每个模块的页面在 `frontend/src/views/<模块>/index.vue`，页面只负责渲染，读写统一走
-  `frontend/src/api/local-service.ts`。
+  `frontend/src/api/local-service.ts`（数据分享额外经由 `share-service.ts`）。
 - 字段、状态、动作与流转目标集中在 `frontend/src/data/modules.ts`；示例数据在
   `frontend/src/data/seed.ts`。
-- 状态流转只允许在 `local-service.ts` 里改，页面组件不做业务判断。
+- 状态流转只允许在 `local-service.ts` / `share-service.ts` 里改，页面组件不做业务判断。
 - 想回到初始数据：清掉浏览器里 `interactive-analytics-lab:entries` 这一项，或调用 `resetModule(模块)`。
+  分享链接单独存储在 `interactive-analytics-lab:share-links`，重置数据分享模块时会一并清空。
 
 领域：数据工程
 子方向：数据分析与数据应用

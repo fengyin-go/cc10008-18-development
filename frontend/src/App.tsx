@@ -20,6 +20,7 @@ import NotifyView from './views/notify'
 import CacheView from './views/cache'
 import TagView from './views/tag'
 import ShareView from './views/share'
+import ShareOpenView from './views/share/ShareOpenView'
 
 const navItems = [{ label: "运营概览", path: "/" }, { label: "交互查询", path: "/query" }, { label: "可视化图表", path: "/chart" }, { label: "数据源接入", path: "/source" }, { label: "聚合计算", path: "/aggregate" }, { label: "数据筛选", path: "/filter" }, { label: "报告生成", path: "/reportgen" }, { label: "异常检测", path: "/anomaly" }, { label: "多维下钻", path: "/drill" }, { label: "对比分析", path: "/compare" }, { label: "分析流水线", path: "/pipeline" }, { label: "数据集管理", path: "/datastore" }, { label: "趋势预测", path: "/forecast" }, { label: "数据分片", path: "/segment" }, { label: "调度管理", path: "/scheduler" }, { label: "通知分发", path: "/notify" }, { label: "查询缓存", path: "/cache" }, { label: "数据标签", path: "/tag" }, { label: "数据分享", path: "/share" }]
 
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/cache" element={<CacheView />} />
           <Route path="/tag" element={<TagView />} />
           <Route path="/share" element={<ShareView />} />
+          <Route path="/share/open/:token" element={<ShareOpenView />} />
         </Routes>
       </main>
     </div>

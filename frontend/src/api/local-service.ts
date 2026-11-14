@@ -1,6 +1,7 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
+import { generateShareLink, resetShareModule, revokeShareLink } from '@/api/share-service'
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
 const NEGATIVE_ACTIONS = ['撤销', '作废', '拒绝', '驳回', '停用', '忽略', '下线', '回滚']
@@ -29,6 +30,17 @@ export function listEntries(key: string, filters: Record<string, string> = {}): 
 }
 
 export function runAction(key: string, id: number, action: string): ActionResult {
+  // 数据分享的生效/撤销必须走分享服务：链接快照、访问计数与批次状态只能由那边维护。
+  if (key === 'share') {
+    if (action === '生效分享') {
+      const generated = generateShareLink(id)
+      return { ok: generated.ok, message: generated.message }
+    }
+    if (action === '撤销链接') {
+      const revoked = revokeShareLink(id)
+      return { ok: revoked.ok, message: revoked.message }
+    }
+  }
   const meta = moduleMeta(key)
   const target = meta.actionTargets[action]
   if (!target) {
@@ -57,6 +69,10 @@ export function runAction(key: string, id: number, action: string): ActionResult
 }
 
 export function resetModule(key: string): PageResult {
+  if (key === 'share') {
+    resetShareModule()
+    return listEntries(key)
+  }
   resetRows(key)
   return listEntries(key)
 }
